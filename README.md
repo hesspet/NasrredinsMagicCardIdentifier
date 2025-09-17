@@ -34,6 +34,7 @@ Gefunden bei Amazon: https://www.amazon.de/dp/B0B1QB4347?ref=ppx_yo2ov_dt_b_fed_
 
 # Quellen:
 
+* Projektintern, Kopien von Datasheets: https://github.com/hesspet/NasrredinsMagicCardIdentifier/tree/main/Datasheets
 * https://www.espboards.dev/sensors/pn532/ ESP32 PN532 NFC Module Pinout, Wiring, ESP32 and more - Gute Übersicht über das Modul. Speziell in Richtung ESP32 gedacht.
 * https://www.elechouse.com der Hersteller des Breakoutboards (PS: Bei dem Board von Amazon dürfte es sich um einen Clone handeln, die her gezeigten Boards sehen doch etwas anders aus: https://www.elechouse.com/product-category/communication-shield/rfid/)
 * Eine etwas kürzere Dokumentation des Breakoutboards: https://components101.com/wireless/pn532-nfc-rfid-module
