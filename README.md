@@ -38,6 +38,10 @@ Gefunden bei Amazon: https://www.amazon.de/dp/B0B1QB4347?ref=ppx_yo2ov_dt_b_fed_
     * als PWA  mit IP
     * MAUI mit Bluetooth BLE
     * ???
+   
+# Weitere Infos im WIKI
+
+https://github.com/hesspet/NasrredinsMagicCardIdentifier/wiki
 
 # Quellen:
 
