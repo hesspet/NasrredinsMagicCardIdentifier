@@ -20,11 +20,17 @@ Gefunden bei Amazon: https://www.amazon.de/dp/B0B1QB4347?ref=ppx_yo2ov_dt_b_fed_
 # Roadmap
 
 * ERLEDIGT - ~Projekt anlegen~
-* Hardware anbinden (Modus klären, I2C oder HSU)
+* ERLEDIGT - ~Hardware anbinden (Modus klären, I2C oder HSU)~
+  * Anbindung in der einfachsten Version via HSU (High Speed UART)
+
 * Einfache Tests Lesen (ggf. Schreiben) der Karte
-  * Arduino Lib auswählen
+  * ERLEDIGT ~Arduino Library auswählen~
+    * Adafruit_PN532
+      *  https://adafruit-pn532.readthedocs.io/en/latest/
+      *  https://github.com/adafruit/Adafruit-PN532
+      * Header mit allen Funktionen: https://github.com/adafruit/Adafruit-PN532/blob/master/Adafruit_PN532.h
 * Projektkonzept weiter ausarbeiten
-  * Einfacher Trick
+  * Einfaches Kunststück
     * Lesen auf Chip, anzeige z.B. in T-Display
 * Weitere Ideen
   * Anbindung an Smarthone
