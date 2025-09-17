@@ -17,6 +17,21 @@ Gefunden bei Amazon: https://www.amazon.de/dp/B0B1QB4347?ref=ppx_yo2ov_dt_b_fed_
 
 <img src="Images/NMCI_NFC_MODULE_V3_ELECHOUSE_Oberseite.png" alt="Breakout Oberseite" width="400"> <img src="Images/NMCI_NFC_MODULE_V3_ELECHOUSE_Unterseite.png" alt="Breakout Unterseite" width="400">
 
+# Roadmap
+
+* ERLEDIGT - ~Projekt anlegen~
+* Hardware anbinden (Modus klären, I2C oder HSU)
+* Einfache Tests Lesen (ggf. Schreiben) der Karte
+  * Arduino Lib auswählen
+* Projektkonzept weiter ausarbeiten
+  * Einfacher Trick
+    * Lesen auf Chip, anzeige z.B. in T-Display
+* Weitere Ideen
+  * Anbindung an Smarthone
+    * als PWA  mit IP
+    * MAUI mit Bluetooth BLE
+    * ???
+
 # Quellen:
 
 * https://www.espboards.dev/sensors/pn532/ ESP32 PN532 NFC Module Pinout, Wiring, ESP32 and more - Gute Übersicht über das Modul. Speziell in Richtung ESP32 gedacht.
