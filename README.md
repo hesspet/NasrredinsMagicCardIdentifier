@@ -1,4 +1,4 @@
-# Nasrredins Magic Card Identifier
+# Nasreddins Magic Card Identifier
 
 Eine RFID Variante um bei Zauberroutinen Gegenstände via RFID Technik zu identifizieren
 
