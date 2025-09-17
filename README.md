@@ -1,4 +1,5 @@
-# NasrredinsMagicCardIdentifier
+# Nasrredins Magic Card Identifier
+
 Eine RFID Variante um bei Zauberroutinen Gegenstände via RFID Technik zu identifizieren
 
 Man nehme ein RFUD Breakout Board, hänge ein ESP32 dran und verstecke RFID Aufkleber zwischen Spielkarten und schon hat man ein Gerät mit dem man die verschiedensten Zauberroutinen entwicklen kann.
