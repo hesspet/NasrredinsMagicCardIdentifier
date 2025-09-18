@@ -12,6 +12,7 @@
 #include <NimBLEHIDDevice.h>
 #include <HIDTypes.h>
 #include <HIDKeyboardTypes.h>
+#include <HIDKeyboardKeycodes.h>
 
 static NimBLEHIDDevice* hid;
 static NimBLECharacteristic* inputReport;  // Keyboard input report (ID 1)
