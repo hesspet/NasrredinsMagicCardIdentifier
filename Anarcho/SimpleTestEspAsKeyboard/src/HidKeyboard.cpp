@@ -4,13 +4,33 @@
 
 #include "HidConsts.h"
 
+#if !defined(NIMBLE_CPP_CONNINFO_H_)
+#    if defined(__has_include)
+#        if __has_include(<NimBLEConnInfo.h>)
+#            include <NimBLEConnInfo.h>
+#        endif
+#    endif
+#endif
+
+#if defined(NIMBLE_CPP_CONNINFO_H_)
+#    define HID_KEYBOARD_HAS_CONN_INFO 1
+#else
+#    define HID_KEYBOARD_HAS_CONN_INFO 0
+#endif
+
 class HidKeyboardProtocolModeCallbacks : public NimBLECharacteristicCallbacks {
 public:
     explicit HidKeyboardProtocolModeCallbacks(HidKeyboard& keyboard) : mKeyboard(keyboard) {}
 
+#if HID_KEYBOARD_HAS_CONN_INFO
+    void onWrite(NimBLECharacteristic* characteristic, NimBLEConnInfo&) override {
+        mKeyboard.handleProtocolModeWrite(characteristic);
+    }
+#else
     void onWrite(NimBLECharacteristic* characteristic) override {
         mKeyboard.handleProtocolModeWrite(characteristic);
     }
+#endif
 
 private:
     HidKeyboard& mKeyboard;
@@ -20,13 +40,21 @@ class HidKeyboardInputSubscribeCallbacks : public NimBLECharacteristicCallbacks 
 public:
     explicit HidKeyboardInputSubscribeCallbacks(HidKeyboard& keyboard) : mKeyboard(keyboard) {}
 
-    void onSubscribe(NimBLECharacteristic* characteristic, NimBLEConnInfo&, uint16_t subValue) override {
+#if HID_KEYBOARD_HAS_CONN_INFO
+    void onSubscribe(
+        NimBLECharacteristic* characteristic,
+        NimBLEConnInfo&,
+        uint16_t subValue) override {
         mKeyboard.handleSubscription(characteristic, subValue);
     }
-
-    void onSubscribe(NimBLECharacteristic* characteristic, ble_gap_conn_desc*, uint16_t subValue) override {
+#else
+    void onSubscribe(
+        NimBLECharacteristic* characteristic,
+        ble_gap_conn_desc*,
+        uint16_t subValue) override {
         mKeyboard.handleSubscription(characteristic, subValue);
     }
+#endif
 
 private:
     HidKeyboard& mKeyboard;
@@ -36,6 +64,7 @@ class HidKeyboardServerCallbacks : public NimBLEServerCallbacks {
 public:
     explicit HidKeyboardServerCallbacks(HidKeyboard& keyboard) : mKeyboard(keyboard) {}
 
+#if HID_KEYBOARD_HAS_CONN_INFO
     void onConnect(NimBLEServer*, NimBLEConnInfo&) override {
         mKeyboard.afterConnect();
     }
@@ -43,7 +72,7 @@ public:
     void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
         mKeyboard.afterDisconnect();
     }
-
+#else
     void onConnect(NimBLEServer*) override {
         mKeyboard.afterConnect();
     }
@@ -51,6 +80,7 @@ public:
     void onDisconnect(NimBLEServer*) override {
         mKeyboard.afterDisconnect();
     }
+#endif
 
 private:
     HidKeyboard& mKeyboard;
