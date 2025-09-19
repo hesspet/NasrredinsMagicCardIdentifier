@@ -5,21 +5,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source Files\\src">
-      <UniqueIdentifier>{60F70509-9F11-4F4B-BB31-88F7D35283FE}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\\src\\Helper">
-      <UniqueIdentifier>{6CBB7E1E-DB59-4C42-9C55-3D674E98B5A4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\\src">
-      <UniqueIdentifier>{18BF9F98-0D7F-4E8C-9FE5-8FE2BAE2D9AF}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\\src\\Helper">
-      <UniqueIdentifier>{4A4CB243-8BC4-4F61-A477-9EF067D1D8CE}</UniqueIdentifier>
     </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
@@ -29,10 +17,10 @@
   <ItemGroup>
     <ClCompile Include="SimpleTestEspAsKeyboard.ino" />
     <ClCompile Include="src\HidKeyboard.cpp">
-      <Filter>Source Files\src</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Helper\Utf8Decoder.cpp">
-      <Filter>Source Files\src\Helper</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -40,13 +28,13 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HidConsts.h">
-      <Filter>Header Files\src</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HidKeyboard.h">
-      <Filter>Header Files\src</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Helper\Utf8Decoder.h">
-      <Filter>Header Files\src\Helper</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
