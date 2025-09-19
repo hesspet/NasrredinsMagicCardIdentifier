@@ -79,9 +79,13 @@
       <DeploymentContent>true</DeploymentContent>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">D:\dev\Nasreddins-Magic-Card-Identifier\Anarcho\SimpleTestEspAsKeyboard\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <ClCompile Include="src\HidKeyboard.cpp">
+      <FileType>CppCode</FileType>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\HidConsts.h" />
+    <ClInclude Include="src\HidKeyboard.h" />
     <ClInclude Include="__vm\.SimpleTestEspAsKeyboard.vsarduino.h" />
   </ItemGroup>
   <PropertyGroup>

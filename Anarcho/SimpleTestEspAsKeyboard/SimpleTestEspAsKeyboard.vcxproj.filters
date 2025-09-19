@@ -16,12 +16,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SimpleTestEspAsKeyboard.ino" />
+    <ClCompile Include="src\HidKeyboard.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="__vm\.SimpleTestEspAsKeyboard.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\HidConsts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\HidKeyboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
