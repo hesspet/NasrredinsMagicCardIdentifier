@@ -1,4 +1,7 @@
 /*
+  Einfaches Testprogramm um die grundlegende Funktion als KEYBOARD HID zu testen.
+  Zeichen können auf der Seriellen eingegeben werden und werden dann nach Android geschickt.
+
   ESP32 BLE-HID Keyboard (DE) – Boot-Protocol-First, NimBLE 2.3.6+/2.4.x
   - Serial (USB) -> BLE HID Keyboard (Android/iOS)
   - Deutsches Layout inkl. ä/ö/ü/ß/€, Z/Y
@@ -8,10 +11,6 @@
 */
 
 #include <NimBLEDevice.h>
-
-static unsigned long gLastAuto = 0;
-static const char* gDemo = "Test 123\n";
-static int           gDemoIdx = 0;
 
 // ---------- HID Keycodes / Modifier Fallbacks ----------
 #ifndef HID_KEY_ENTER
