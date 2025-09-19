@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36310.24
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleTestEspAsKeyboard", "SimpleTestEspAsKeyboard.vcxproj", "{CCF86211-1E20-861E-EB0D-A3B64ED815A1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NimBLE-Arduino-2.3.6", "Libraries\NimBLE-Arduino\2.3.6\NimBLE-Arduino\NimBLE-Arduino-2.3.6.vcxitems", "{CF78E709-433F-4306-AE61-D56E130117BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -31,5 +33,9 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {102AD8C0-CA31-4D9C-A5B9-2CA532DB41A9}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		Libraries\NimBLE-Arduino\2.3.6\NimBLE-Arduino\NimBLE-Arduino-2.3.6.vcxitems*{ccf86211-1e20-861e-eb0d-a3b64ed815a1}*SharedItemsImports = 4
+		Libraries\NimBLE-Arduino\2.3.6\NimBLE-Arduino\NimBLE-Arduino-2.3.6.vcxitems*{cf78e709-433f-4306-ae61-d56e130117bd}*SharedItemsImports = 9
 	EndGlobalSection
 EndGlobal

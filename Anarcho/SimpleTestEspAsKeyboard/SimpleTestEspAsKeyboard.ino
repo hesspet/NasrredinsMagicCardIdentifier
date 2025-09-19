@@ -10,6 +10,7 @@
   - UTF-8 Decoder für seriellen Input
 */
 
+#include <NimBLEDevice.h>
 #include "src/HidKeyboard.h"
 
 // ---------- Globals ----------
