@@ -81,6 +81,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\HidConsts.h" />
     <ClInclude Include="__vm\.SimpleTestEspAsKeyboard.vsarduino.h" />
   </ItemGroup>
   <PropertyGroup>

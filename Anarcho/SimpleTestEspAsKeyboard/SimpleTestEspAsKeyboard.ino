@@ -11,7 +11,7 @@
 */
 
 #include <NimBLEDevice.h>
-#include "HidConsts.h"
+#include "src/HidConsts.h"
 
 // ---------- Globals ----------
 static NimBLECharacteristic* gInputReport = nullptr;

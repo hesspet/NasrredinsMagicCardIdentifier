@@ -1,5 +1,4 @@
-#ifndef HID_CONSTS_H
-#define HID_CONSTS_H
+#pragma once
 
 #include <stdint.h>
 
@@ -72,6 +71,7 @@
 #endif
 
 // ---------- UUIDs ----------
+
 static const uint16_t UUID_HID_SERVICE = 0x1812;
 static const uint16_t UUID_HID_INFORMATION = 0x2A4A;
 static const uint16_t UUID_REPORT_MAP = 0x2A4B;
@@ -83,6 +83,7 @@ static const uint16_t UUID_BOOT_KB_OUTPUT = 0x2A32;
 static const uint16_t UUID_RPT_REF_DESC = 0x2908;
 
 // ---------- Report-Map ----------
+
 static const uint8_t KEYBOARD_REPORTMAP[] = {
   0x05, 0x01, 0x09, 0x06, 0xA1, 0x01,
     0x85, 0x01,                   // Report ID = 1 (Input)
@@ -109,5 +110,3 @@ static const uint8_t KEYBOARD_REPORTMAP[] = {
     0x81, 0x00,                   // Input (Data,Arr,Abs)
   0xC0
 };
-
-#endif // HID_CONSTS_H
