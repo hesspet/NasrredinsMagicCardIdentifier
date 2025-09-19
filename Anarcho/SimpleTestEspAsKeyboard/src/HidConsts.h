@@ -72,14 +72,23 @@
 
 // ---------- UUIDs ----------
 
+// Primärer Dienst, über den das Gerät als HID-Tastatur identifiziert wird.
 static const uint16_t UUID_HID_SERVICE = 0x1812;
+// Characteristic mit den allgemeinen Geräteeigenschaften (Version, Landeskode, Flags).
 static const uint16_t UUID_HID_INFORMATION = 0x2A4A;
+// Characteristic, welche die gesamte HID-Report-Map (Layout der Reports) bereitstellt.
 static const uint16_t UUID_REPORT_MAP = 0x2A4B;
+// Characteristic, über die der Host das Gerät z. B. in den Suspend-Zustand schicken kann.
 static const uint16_t UUID_HID_CONTROL_POINT = 0x2A4C;
+// Characteristic für die eigentlichen HID-Reports (Input, Output und Feature Reports).
 static const uint16_t UUID_REPORT = 0x2A4D;
+// Characteristic zum Umschalten zwischen Boot- und Report-Protokollmodus.
 static const uint16_t UUID_PROTOCOL_MODE = 0x2A4E;
+// Boot-Protokoll-Eingabereport für Tastaturen (wird vor allem von BIOS/UEFI genutzt).
 static const uint16_t UUID_BOOT_KB_INPUT = 0x2A22;
+// Boot-Protokoll-Ausgabereport für Tastaturen (z. B. LED-Steuerung wie CapsLock).
 static const uint16_t UUID_BOOT_KB_OUTPUT = 0x2A32;
+// Descriptor, der zu einem Report die Report-ID und den Report-Typ referenziert.
 static const uint16_t UUID_RPT_REF_DESC = 0x2908;
 
 // ---------- Report-Map ----------
