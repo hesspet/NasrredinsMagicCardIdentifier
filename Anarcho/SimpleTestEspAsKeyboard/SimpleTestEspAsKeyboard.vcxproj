@@ -84,10 +84,14 @@
     <ClCompile Include="src\HidKeyboard.cpp">
       <FileType>CppCode</FileType>
     </ClCompile>
+    <ClCompile Include="src\Helper\Utf8Decoder.cpp">
+      <FileType>CppCode</FileType>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\HidConsts.h" />
     <ClInclude Include="src\HidKeyboard.h" />
+    <ClInclude Include="src\Helper\Utf8Decoder.h" />
     <ClInclude Include="__vm\.SimpleTestEspAsKeyboard.vsarduino.h" />
   </ItemGroup>
   <PropertyGroup>
