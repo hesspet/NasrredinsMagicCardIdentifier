@@ -1,12 +1,19 @@
-﻿/*
-  ESP32 BLE-HID Keyboard (DE) – NimBLE 2.4.6, HID-Service "per Hand"
-  - Serial -> BLE HID Keyboard (Android/iOS)
-  - Deutsches Layout (Z/Y, ä/ö/ü/ß/€, Grundzeichen)
+/*
+  ESP32 BLE-HID Keyboard (DE) – Boot-Protocol-First, NimBLE 2.3.6+/2.4.x
+  - Serial (USB) -> BLE HID Keyboard (Android/iOS)
+  - Deutsches Layout inkl. ä/ö/ü/ß/€, Z/Y
+  - HID-Service 0x1812 + Boot-Keyboard (0x2A22/0x2A32)
+  - Protocol Mode default = Boot (0) für Android
+  - UTF-8 Decoder für seriellen Input
 */
 
 #include <NimBLEDevice.h>
 
-// --------- HID Keycodes / Modifier Fallbacks (falls Header fehlen) ---------
+static unsigned long gLastAuto = 0;
+static const char* gDemo = "Test 123\n";
+static int           gDemoIdx = 0;
+
+// ---------- HID Keycodes / Modifier Fallbacks ----------
 #ifndef HID_KEY_ENTER
 #define HID_KEY_A              0x04
 #define HID_KEY_B              0x05
@@ -16,7 +23,7 @@
 #define HID_KEY_F              0x09
 #define HID_KEY_G              0x0A
 #define HID_KEY_H              0x0B
-#define HID_KEY_I              0x0
+#define HID_KEY_I              0x0C
 #define HID_KEY_J              0x0D
 #define HID_KEY_K              0x0E
 #define HID_KEY_L              0x0F
@@ -74,85 +81,182 @@
 #define KEYBOARD_MODIFIER_RIGHTGUI    0x80
 #endif
 
-// --------- UUIDs (BT SIG, 16-bit) ---------
+// ---------- UUIDs ----------
 static const uint16_t UUID_HID_SERVICE = 0x1812;
 static const uint16_t UUID_HID_INFORMATION = 0x2A4A;
 static const uint16_t UUID_REPORT_MAP = 0x2A4B;
 static const uint16_t UUID_HID_CONTROL_POINT = 0x2A4C;
 static const uint16_t UUID_REPORT = 0x2A4D;
 static const uint16_t UUID_PROTOCOL_MODE = 0x2A4E;
+static const uint16_t UUID_BOOT_KB_INPUT = 0x2A22;
+static const uint16_t UUID_BOOT_KB_OUTPUT = 0x2A32;
+static const uint16_t UUID_RPT_REF_DESC = 0x2908;
 
-// Descriptors
-static const uint16_t UUID_REPORT_REFERENCE = 0x2908; // Report Reference
-// CCCD (0x2902) wird von NimBLE automatisch für notify angelegt
-
-// --------- HID Report Map (Keyboard, ReportID=1) ---------
+// ---------- Report-Map ----------
 static const uint8_t KEYBOARD_REPORTMAP[] = {
-  0x05, 0x01,       // Usage Page (Generic Desktop)
-  0x09, 0x06,       // Usage (Keyboard)
-  0xA1, 0x01,       // Collection (Application)
-    0x85, 0x01,     //   Report ID (1)
-    0x05, 0x07,     //   Usage Page (Keyboard/Keypad)
-    0x19, 0xE0,     //   Usage Min (LeftControl)
-    0x29, 0xE7,     //   Usage Max (Right GUI)
-    0x15, 0x00,     //   Logical Min (0)
-    0x25, 0x01,     //   Logical Max (1)
-    0x75, 0x01,     //   Report Size (1)
-    0x95, 0x08,     //   Report Count (8)
-    0x81, 0x02,     //   Input (Data,Var,Abs) ; Modifiers
+  0x05, 0x01, 0x09, 0x06, 0xA1, 0x01,
+    0x85, 0x01,                   // Report ID = 1 (Input)
+    0x05, 0x07,
+    0x19, 0xE0, 0x29, 0xE7,       // Modifiers
+    0x15, 0x00, 0x25, 0x01,
+    0x75, 0x01, 0x95, 0x08,
+    0x81, 0x02,                   // Input (Data,Var,Abs)
 
-    0x75, 0x08,     //   Report Size (8)
-    0x95, 0x01,     //   Report Count (1)
-    0x81, 0x01,     //   Input (Const,Array,Abs) ; Reserved
+    0x75, 0x08, 0x95, 0x01,
+    0x81, 0x01,                   // Reserved
 
-    0x05, 0x08,     //   Usage Page (LEDs)
-    0x19, 0x01,     //   Usage Min (Num Lock)
-    0x29, 0x05,     //   Usage Max (Kana)
-    0x75, 0x01,     //   Report Size (1)
-    0x95, 0x05,     //   Report Count (5)
-    0x91, 0x02,     //   Output (Data,Var,Abs)
+    0x05, 0x08,
+    0x19, 0x01, 0x29, 0x05,       // LEDs
+    0x75, 0x01, 0x95, 0x05,
+    0x91, 0x02,                   // Output (Data,Var,Abs)
+    0x75, 0x03, 0x95, 0x01,
+    0x91, 0x01,                   // Output (Const,Arr,Abs) padding
 
-    0x75, 0x03,     //   Report Size (3)
-    0x95, 0x01,     //   Report Count (1)
-    0x91, 0x01,     //   Output (Const,Array,Abs)
-
-    0x05, 0x07,     //   Usage Page (Keyboard/Keypad)
-    0x19, 0x00,     //   Usage Min (Reserved (no event))
-    0x29, 0x65,     //   Usage Max (Keyboard Application)
-    0x15, 0x00,     //   Logical Min (0)
-    0x25, 0x01,     //   Logical Max (1)
-    0x75, 0x08,     //   Report Size (8)
-    0x95, 0x06,     //   Report Count (6)
-    0x81, 0x00,     //   Input (Data,Array,Abs) ; 6-key rollover
-  0xC0              // End Collection
+    0x05, 0x07,
+    0x19, 0x00, 0x29, 0x65,       // Keys 0..101
+    0x15, 0x00, 0x25, 0x65,
+    0x75, 0x08, 0x95, 0x06,
+    0x81, 0x00,                   // Input (Data,Arr,Abs)
+  0xC0
 };
 
-// --------- Globale BLE-Objekte ---------
-static NimBLECharacteristic* gInputReportChar = nullptr;
+// ---------- Globals ----------
+static NimBLECharacteristic* gInputReport = nullptr;
+static NimBLECharacteristic* gBootIn = nullptr;
 static NimBLEAdvertising* gAdv = nullptr;
 static volatile bool         gConnected = false;
+static uint8_t               gProtocolMode = 0x00; // 0=Boot (Default), 1=Report
 
-// --------- Server-Callbacks ---------
+// Track subscriptions (CCCD)
+static volatile bool gSubBootIn = false;
+static volatile bool gSubReport = false;
+
+// ---------- Protocol-Mode Callback ----------
+class ProtocolModeCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic* c) {
+        std::string v = c->getValue();
+        if (v.size() == 1 && (v[0] == 0x00 || v[0] == 0x01)) {
+            gProtocolMode = (uint8_t)v[0];
+            Serial.printf("[HID] Host set ProtocolMode = %s\n",
+                gProtocolMode ? "Report(1)" : "Boot(0)");
+        }
+    }
+};
+static ProtocolModeCallbacks gProtoCb;
+
+// ---------- Subscribe-Callbacks (beide Signaturen unterstützen) ----------
+class InputSubscribeCallbacks : public NimBLECharacteristicCallbacks {
+public:
+    // Neuere NimBLE (NimBLEConnInfo&)
+    void onSubscribe(NimBLECharacteristic* c, NimBLEConnInfo&, uint16_t subValue) {
+        handleSub(c, subValue);
+    }
+    // Ältere NimBLE (ble_gap_conn_desc*)
+    void onSubscribe(NimBLECharacteristic* c, ble_gap_conn_desc*, uint16_t subValue) {
+        handleSub(c, subValue);
+    }
+private:
+    void handleSub(NimBLECharacteristic* c, uint16_t subValue) {
+        const bool notifyEnabled = (subValue & 0x0001);
+        if (c == gBootIn) {
+            gSubBootIn = notifyEnabled;
+            Serial.printf("[HID] BootInput subscribe = %d\n", (int)gSubBootIn);
+        }
+        else if (c == gInputReport) {
+            gSubReport = notifyEnabled;
+            Serial.printf("[HID] ReportInput subscribe = %d\n", (int)gSubReport);
+        }
+    }
+} gSubCb;
+
+// ---------- Server-Callbacks (Signaturen ohne override) ----------
 class ServerCallbacks : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer*, NimBLEConnInfo&) override {
+    // Neuere NimBLE
+    void onConnect(NimBLEServer*, NimBLEConnInfo&) {
+        afterConnect();
+    }
+    void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int /*reason*/) {
+        afterDisconnect();
+    }
+    // Ältere NimBLE
+    void onConnect(NimBLEServer* /*s*/) {
+        afterConnect();
+    }
+    void onDisconnect(NimBLEServer* /*s*/) {
+        afterDisconnect();
+    }
+
+    void afterConnect() {
         gConnected = true;
         Serial.println("[BLE] Verbunden");
+        unsigned long t0 = millis();
+        while (millis() - t0 < 800) delay(1);
+
+        auto sendRelease = []() {
+            uint8_t rpt[8] = { 0,0,0,0,0,0,0,0 };
+            if (gBootIn) { gBootIn->setValue(rpt, 8);      gBootIn->notify(); }
+            if (gInputReport) { gInputReport->setValue(rpt, 8); gInputReport->notify(); }
+            };
+
+        uint8_t rptA[8] = { KEYBOARD_MODIFIER_LEFTSHIFT, 0, HID_KEY_A, 0,0,0,0,0 };
+        uint8_t rptEnter[8] = { 0,0, HID_KEY_ENTER, 0,0,0,0,0 };
+
+        if (gBootIn) { gBootIn->setValue(rptA, 8);      gBootIn->notify(); }
+        if (gInputReport) { gInputReport->setValue(rptA, 8); gInputReport->notify(); }
+        delay(10); sendRelease(); delay(10);
+
+        if (gBootIn) { gBootIn->setValue(rptEnter, 8);      gBootIn->notify(); }
+        if (gInputReport) { gInputReport->setValue(rptEnter, 8); gInputReport->notify(); }
+        delay(10); sendRelease();
+
+        Serial.printf("[HID] ProtocolMode on connect (may change) = %s\n",
+            gProtocolMode ? "Report(1)" : "Boot(0)");
     }
-    void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int reason) override {
+
+    void afterDisconnect() {
         gConnected = false;
-        Serial.printf("[BLE] Getrennt (reason=%d). Advertising neu...\n", reason);
+        gSubBootIn = gSubReport = false;
+        Serial.println("[BLE] Getrennt. Advertising neu...");
         NimBLEDevice::startAdvertising();
     }
 };
 
-// --------- Senden eines 8-Byte Keyboard-Reports ---------
+// ---------- Send ----------
+static inline void sendKeyReportRaw(NimBLECharacteristic* ch,
+    const char* tag,
+    uint8_t mods,
+    uint8_t k1 = 0, uint8_t k2 = 0, uint8_t k3 = 0,
+    uint8_t k4 = 0, uint8_t k5 = 0, uint8_t k6 = 0) {
+    if (!ch) return;
+    uint8_t rpt[8] = { mods, 0x00, k1, k2, k3, k4, k5, k6 };
+    ch->setValue(rpt, sizeof(rpt));
+    bool ok = ch->notify();
+    Serial.printf("[HID] send %s notify=%d mods=%02X keys=%02X %02X %02X %02X %02X %02X\n",
+        tag, (int)ok, mods, k1, k2, k3, k4, k5, k6);
+}
+
 static inline void sendKeyReport(uint8_t mods,
     uint8_t k1 = 0, uint8_t k2 = 0, uint8_t k3 = 0,
     uint8_t k4 = 0, uint8_t k5 = 0, uint8_t k6 = 0) {
-    if (!gConnected || !gInputReportChar) return;
-    uint8_t rpt[8] = { mods, 0x00, k1, k2, k3, k4, k5, k6 };
-    gInputReportChar->setValue(rpt, sizeof(rpt));
-    gInputReportChar->notify();
+
+    if (!gConnected) return;
+
+    if (gProtocolMode == 0x00) { // Boot
+        if (gSubBootIn) {
+            sendKeyReportRaw(gBootIn, "Boot", mods, k1, k2, k3, k4, k5, k6);
+            return;
+        }
+    }
+    else { // Report
+        if (gSubReport) {
+            sendKeyReportRaw(gInputReport, "Report", mods, k1, k2, k3, k4, k5, k6);
+            return;
+        }
+    }
+
+    // Fallback an beide, wenn (noch) nicht subscribed
+    sendKeyReportRaw(gBootIn, "Boot*", mods, k1, k2, k3, k4, k5, k6);
+    sendKeyReportRaw(gInputReport, "Report*", mods, k1, k2, k3, k4, k5, k6);
 }
 
 static inline void pressAndRelease(uint8_t mods, uint8_t key) {
@@ -162,40 +266,60 @@ static inline void pressAndRelease(uint8_t mods, uint8_t key) {
     delay(5);
 }
 
-// --------- DE-Mapping ---------
-static bool asciiToHid_DE(char c, uint8_t& mods, uint8_t& key) {
+// ---------- UTF-8 Decoder ----------
+struct Utf8Decoder {
+    uint32_t codepoint = 0;
+    uint8_t  needed = 0;
+    bool feed(uint8_t byte, uint32_t& out) {
+        if (needed == 0) {
+            if (byte < 0x80) { out = byte; return true; }
+            if ((byte & 0xE0) == 0xC0) { codepoint = byte & 0x1F; needed = 1; return false; }
+            if ((byte & 0xF0) == 0xE0) { codepoint = byte & 0x0F; needed = 2; return false; }
+            if ((byte & 0xF8) == 0xF0) { codepoint = byte & 0x07; needed = 3; return false; }
+            return false;
+        }
+        else {
+            if ((byte & 0xC0) != 0x80) { needed = 0; return false; }
+            codepoint = (codepoint << 6) | (byte & 0x3F);
+            if (--needed == 0) { out = codepoint; return true; }
+            return false;
+        }
+    }
+} gUtf;
+
+// ---------- DE-Mapping ----------
+static bool cpToHid_DE(uint32_t cp, uint8_t& mods, uint8_t& key) {
     mods = 0;
+    if (cp == '\n' || cp == '\r') { key = HID_KEY_ENTER; return true; }
+    if (cp == '\t') { key = HID_KEY_TAB; return true; }
+    if (cp == ' ') { key = HID_KEY_SPACEBAR; return true; }
 
-    if (c == '\n' || c == '\r') { key = HID_KEY_ENTER; return true; }
-    if (c == '\t') { key = HID_KEY_TAB; return true; }
-    if (c == ' ') { key = HID_KEY_SPACEBAR; return true; }
+    if (cp >= '1' && cp <= '9') { key = (uint8_t)(HID_KEY_1 + (cp - '1')); return true; }
+    if (cp == '0') { key = HID_KEY_0; return true; }
 
-    if (c >= '1' && c <= '9') { key = (uint8_t)(HID_KEY_1 + (c - '1')); return true; }
-    if (c == '0') { key = HID_KEY_0; return true; }
-
-    if (c >= 'a' && c <= 'z') {
-        if (c == 'z') { key = HID_KEY_Y; return true; }
-        if (c == 'y') { key = HID_KEY_Z; return true; }
-        key = (uint8_t)(HID_KEY_A + (c - 'a')); return true;
+    if (cp >= 'a' && cp <= 'z') {
+        if (cp == 'z') { key = HID_KEY_Y; return true; }
+        if (cp == 'y') { key = HID_KEY_Z; return true; }
+        key = (uint8_t)(HID_KEY_A + (cp - 'a')); return true;
     }
-    if (c >= 'A' && c <= 'Z') {
-        if (c == 'Z') { key = HID_KEY_Y; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; }
-        if (c == 'Y') { key = HID_KEY_Z; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; }
-        key = (uint8_t)(HID_KEY_A + (c - 'A')); mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
-    }
-
-    switch (c) {
-    case 'ä': key = HID_KEY_APOSTROPHE; return true;
-    case 'Ä': key = HID_KEY_APOSTROPHE; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
-    case 'ö': key = HID_KEY_SEMICOLON;  return true;
-    case 'Ö': key = HID_KEY_SEMICOLON;  mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
-    case 'ü': key = HID_KEY_LEFT_BRACKET; return true;
-    case 'Ü': key = HID_KEY_LEFT_BRACKET; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
-    case 'ß': key = HID_KEY_MINUS; return true;
-    case '€': mods = KEYBOARD_MODIFIER_RIGHTALT; key = HID_KEY_E; return true;
+    if (cp >= 'A' && cp <= 'Z') {
+        if (cp == 'Z') { key = HID_KEY_Y; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; }
+        if (cp == 'Y') { key = HID_KEY_Z; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; }
+        key = (uint8_t)(HID_KEY_A + (cp - 'A')); mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     }
 
-    switch (c) {
+    switch (cp) {
+    case 0x00E4: key = HID_KEY_APOSTROPHE; return true;                               // ä
+    case 0x00C4: key = HID_KEY_APOSTROPHE; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; // Ä
+    case 0x00F6: key = HID_KEY_SEMICOLON;  return true;                               // ö
+    case 0x00D6: key = HID_KEY_SEMICOLON;  mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; // Ö
+    case 0x00FC: key = HID_KEY_LEFT_BRACKET; return true;                             // ü
+    case 0x00DC: key = HID_KEY_LEFT_BRACKET; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true; // Ü
+    case 0x00DF: key = HID_KEY_MINUS; return true;                                    // ß
+    case 0x20AC: mods = KEYBOARD_MODIFIER_RIGHTALT; key = HID_KEY_E; return true;     // €
+    }
+
+    switch (cp) {
     case '.': key = HID_KEY_PERIOD; return true;
     case ',': key = HID_KEY_COMMA; return true;
     case '-': key = HID_KEY_SLASH; return true;
@@ -207,11 +331,13 @@ static bool asciiToHid_DE(char c, uint8_t& mods, uint8_t& key) {
     case '!': key = HID_KEY_1; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     case '?': key = HID_KEY_MINUS; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     case '=': key = HID_KEY_EQUAL; return true;
-    case '/': key = HID_KEY_7; mods = KEYBOARD_MODIFIER_RIGHTALT; return true;
+
+    case '/':  key = HID_KEY_7;  mods = KEYBOARD_MODIFIER_RIGHTALT; return true;
     case '\\': key = HID_KEY_MINUS; mods = KEYBOARD_MODIFIER_RIGHTALT; return true;
-    case '#': key = HID_KEY_BACKSLASH; return true;
-    case '"': key = HID_KEY_2; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
+    case '#':  key = HID_KEY_BACKSLASH; return true;
+    case '"':  key = HID_KEY_2; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     case '\'': key = HID_KEY_BACKSLASH; mods = KEYBOARD_MODIFIER_RIGHTALT; return true;
+
     case '(': key = HID_KEY_8; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     case ')': key = HID_KEY_9; mods = KEYBOARD_MODIFIER_LEFTSHIFT; return true;
     case '[': key = HID_KEY_8; mods = KEYBOARD_MODIFIER_RIGHTALT; return true;
@@ -225,43 +351,43 @@ static bool asciiToHid_DE(char c, uint8_t& mods, uint8_t& key) {
     return false;
 }
 
-static inline void typeChar(char c) {
+static inline void typeCodepoint(uint32_t cp) {
     uint8_t mods, key;
-    if (!asciiToHid_DE(c, mods, key)) {
-        Serial.printf("[HID] Unmapped: 0x%02X '%c'\n", (unsigned char)c, (c >= 32 && c < 127) ? c : '.');
+    if (!cpToHid_DE(cp, mods, key)) {
+        if (cp <= 0x7F) Serial.printf("[HID] Unmapped ASCII: 0x%02X '%c'\n", (unsigned)cp, (char)cp);
+        else            Serial.printf("[HID] Unmapped U+%04lX\n", (unsigned long)cp);
         return;
     }
     pressAndRelease(mods, key);
 }
 
-// --------- Setup: kompletter HID-Service ---------
+// ---------- Setup ----------
 void setup() {
     Serial.begin(115200);
     while (!Serial) {}
 
-    Serial.println("\n[BOOT] ESP32 BLE-HID Keyboard (DE) – NimBLE 2.4.6");
+    Serial.println("\n[BOOT] ESP32 BLE-HID Keyboard (DE) – Boot-Protocol-First");
 
     NimBLEDevice::init("ESP32 DE Keyboard");
-    NimBLEDevice::setPower(ESP_PWR_LVL_P6);
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);   // Just Works
     NimBLEDevice::setSecurityAuth(true, false, true);            // bonding, no MITM, LESC
+    NimBLEDevice::setPower(ESP_PWR_LVL_P9);                      // etwas mehr Sendeleistung
+    // NimBLEDevice::setMTU(517); // optional
 
     NimBLEServer* server = NimBLEDevice::createServer();
     server->setCallbacks(new ServerCallbacks());
 
-    // --- HID Service (0x1812) ---
     NimBLEService* hid = server->createService((uint16_t)UUID_HID_SERVICE);
 
-    // Protocol Mode (0 = Boot, 1 = Report). Wir nutzen Report Mode (1).
+    // Protocol Mode (Default = Boot)
     NimBLECharacteristic* chProtocol = hid->createCharacteristic(
         (uint16_t)UUID_PROTOCOL_MODE,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
     );
-    uint8_t proto = 0x01;
-    chProtocol->setValue(&proto, 1);
+    chProtocol->setCallbacks(&gProtoCb);
+    chProtocol->setValue(&gProtocolMode, 1);
 
-    // HID Information (bcdHID, bCountryCode, Flags)
-    // bcdHID=0x0111, country=0 (not localized), flags=0x02 (normally connectable)
+    // HID Information
     NimBLECharacteristic* chHidInfo = hid->createCharacteristic(
         (uint16_t)UUID_HID_INFORMATION,
         NIMBLE_PROPERTY::READ
@@ -269,13 +395,12 @@ void setup() {
     uint8_t hidInfo[4] = { 0x11, 0x01, 0x00, 0x02 };
     chHidInfo->setValue(hidInfo, sizeof(hidInfo));
 
-    // HID Control Point (host writes 0=suspend,1=exit)
+    // HID Control Point
     NimBLECharacteristic* chCtrlPt = hid->createCharacteristic(
         (uint16_t)UUID_HID_CONTROL_POINT,
         NIMBLE_PROPERTY::WRITE_NR
     );
-    uint8_t ctl = 0x00;
-    chCtrlPt->setValue(&ctl, 1);
+    uint8_t ctl = 0x00; chCtrlPt->setValue(&ctl, 1);
 
     // Report Map
     NimBLECharacteristic* chReportMap = hid->createCharacteristic(
@@ -284,25 +409,35 @@ void setup() {
     );
     chReportMap->setValue((uint8_t*)KEYBOARD_REPORTMAP, sizeof(KEYBOARD_REPORTMAP));
 
-    // Input Report (notify + read) + Report Reference Descriptor (ID=1, Type=Input)
-    gInputReportChar = hid->createCharacteristic(
+    // Input Report (ID=1)
+    gInputReport = hid->createCharacteristic(
         (uint16_t)UUID_REPORT,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
     );
-    // Report Reference: 2 Bytes -> [ReportID, ReportType(1=input,2=output,3=feature)]
-    NimBLEDescriptor* repRef = gInputReportChar->createDescriptor(
-        (uint16_t)UUID_REPORT_REFERENCE,
-        NIMBLE_PROPERTY::READ,
-        2
-    );
-    uint8_t repRefVal[2] = { 0x01, 0x01 }; // ID=1, Type=Input
-    repRef->setValue(repRefVal, sizeof(repRefVal));
+    {
+        NimBLEDescriptor* repRef = gInputReport->createDescriptor(
+            (uint16_t)UUID_RPT_REF_DESC, NIMBLE_PROPERTY::READ, 2
+        );
+        uint8_t repRefVal[2] = { 0x01, 0x01 }; // [ReportID=1, Input]
+        repRef->setValue(repRefVal, sizeof(repRefVal));
+    }
+    gInputReport->setCallbacks(&gSubCb); // subscribe logging
 
-    // (Optional) Output Report (LEDs) könntest du hier ergänzen, falls benötigt.
+    // Boot Keyboard Input/Output
+    gBootIn = hid->createCharacteristic(
+        (uint16_t)UUID_BOOT_KB_INPUT,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
+    );
+    gBootIn->setCallbacks(&gSubCb); // subscribe logging
+
+    hid->createCharacteristic(
+        (uint16_t)UUID_BOOT_KB_OUTPUT,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
+    );
 
     hid->start();
 
-    // --- Device Information Service (optional) ---
+    // Optional: Device Information Service
     NimBLEService* dis = server->createService((uint16_t)0x180A);
     NimBLECharacteristic* cMan = dis->createCharacteristic((uint16_t)0x2A29, NIMBLE_PROPERTY::READ);
     cMan->setValue("TestCo");
@@ -312,22 +447,43 @@ void setup() {
     gAdv = NimBLEDevice::getAdvertising();
     gAdv->addServiceUUID((uint16_t)UUID_HID_SERVICE);
     gAdv->setAppearance(961); // HID Keyboard
+    // gAdv->setScanResponse(true); // <-- in deiner NimBLE-Version nicht vorhanden
     gAdv->start();
 
-    Serial.println("[BLE] Advertising als HID Keyboard. Koppeln in den Bluetooth-Einstellungen.");
-    Serial.println("[INFO] Im seriellen Monitor tippen; Enter = Zeilenumbruch.");
+    Serial.println("[BLE] Advertising als HID Keyboard. Bei Service-Änderungen Bond löschen & neu koppeln.");
+    Serial.println("[INFO] Im seriellen Monitor tippen; Enter = Zeilenumbruch. (UTF-8)");
 }
 
-// --------- Loop: Serial -> HID ---------
+// ---------- Loop ----------
 void loop() {
+    // 1) Serielle Eingabe -> tippen
     while (Serial.available()) {
-        char c = (char)Serial.read();
-        if (c == '\r') continue; // CRLF: nur LF auswerten
-        if (!gConnected) {
-            Serial.printf("[WARN] Nicht verbunden: '%c' (0x%02X)\n", (c >= 32 && c < 127) ? c : '.', (unsigned char)c);
-            continue;
+        uint8_t b = (uint8_t)Serial.read();
+        uint32_t cp;
+        if (gUtf.feed(b, cp)) {
+            if (cp == '\r') continue; // nur LF
+            if (!gConnected) {
+                if (cp <= 0x7F) Serial.printf("[WARN] Nicht verbunden: '%c' (0x%02X)\n", (char)cp, (unsigned)cp);
+                else            Serial.printf("[WARN] Nicht verbunden: U+%04lX\n", (unsigned long)cp);
+                continue;
+            }
+            typeCodepoint(cp);
         }
-        typeChar(c);
     }
+
+#ifdef AUTOTIPPER
+    // 2) Auto-Tipper: alle 1000 ms (außerhalb der while-Schleife)
+    if (gConnected && millis() - gLastAuto >= 1000) {
+        gLastAuto = millis();
+        uint8_t b = (uint8_t)gDemo[gDemoIdx++];
+        if (b == 0) { gDemoIdx = 0; b = (uint8_t)gDemo[gDemoIdx++]; }
+        uint32_t cp;
+        static Utf8Decoder autoDec; // eigener Decoder
+        if (autoDec.feed(b, cp)) {
+            if (cp != '\r') typeCodepoint(cp);
+        }
+    }
+#endif
+
     delay(2);
 }
