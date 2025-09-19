@@ -1,3 +1,8 @@
+/**
+ * @file HidConsts.h
+ * @brief Stellt Konstanten und Report-Definitionen für das HID-Tastaturprofil bereit.
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -102,6 +107,16 @@ static const uint16_t UUID_RPT_REF_DESC = 0x2908;
 
 // ---------- Report-Map ----------
 
+/*
+ * KEYBOARD_REPORTMAP beschreibt den Aufbau des vom Gerät gelieferten HID-Tastaturreports:
+ *  - Die ersten Einträge (0x05, 0x01, 0x09, 0x06, 0xA1, 0x01) setzen Usage Page und Usage
+ *    auf "Generic Desktop / Keyboard" und eröffnen die Application Collection.
+ *  - Die darauffolgenden Definitionen (Report-ID 1) legen acht Eingabebits für die Modifier
+ *    E0..E7 fest, gefolgt von einem reservierten Byte zur Kompatibilität mit dem Boot-Protokoll.
+ *  - Danach folgt ein LED-Output-Report mit fünf Bits (NumLock bis Kana) sowie drei Padding-Bits.
+ *  - Der abschließende Abschnitt definiert sechs Byte breite Keycode-Slots für bis zu sechs
+ *    gleichzeitig gedrückte Tasten im Bereich 0x00 bis 0x65 (Standard 6-Key-Rollover).
+ */
 static const uint8_t KEYBOARD_REPORTMAP[] = {
   0x05, 0x01, 0x09, 0x06, 0xA1, 0x01,
     0x85, 0x01,                   // Report ID = 1 (Input)
