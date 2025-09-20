@@ -1,0 +1,1 @@
+Kopie des der Library von electhouse: https://github.com/elechouse/PN532
