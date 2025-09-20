@@ -1,3 +1,7 @@
+#include <PN532_HSU.h>
+#include <PN532.h>
+#include <NimBLEDevice.h>
+
 void setup() {
   // put your setup code here, to run once:
 
