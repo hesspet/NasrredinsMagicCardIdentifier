@@ -1,0 +1,178 @@
+#include <Arduino.h>
+#include <PN532_HSU.h>
+#include <PN532.h>
+
+#include <ctype.h>
+#include <string.h>
+
+#ifndef PN532_HSU_PORT
+#define PN532_HSU_PORT Serial2
+#endif
+
+#ifndef PN532_HSU_BAUDRATE
+#define PN532_HSU_BAUDRATE 115200
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
+#ifndef PN532_HSU_RX_PIN
+#define PN532_HSU_RX_PIN 16
+#endif
+#ifndef PN532_HSU_TX_PIN
+#define PN532_HSU_TX_PIN 17
+#endif
+#endif
+
+static HardwareSerial &pn532Serial = PN532_HSU_PORT;
+static PN532_HSU pn532hsu(pn532Serial);
+static PN532 nfc(pn532hsu);
+
+namespace {
+constexpr uint8_t kUidBufferSize = 7;
+constexpr uint8_t kFirstUserPage = 4;
+constexpr uint8_t kPagesPerBlock = 4;
+constexpr uint8_t kBytesPerPage = 4;
+constexpr size_t kBlockSize = kPagesPerBlock * kBytesPerPage;
+
+bool readFirstDataBlock(uint8_t *buffer, size_t length) {
+  if (buffer == nullptr || length < kBlockSize) {
+    return false;
+  }
+
+  for (uint8_t page = 0; page < kPagesPerBlock; ++page) {
+    if (!nfc.mifareultralight_ReadPage(kFirstUserPage + page,
+                                       buffer + page * kBytesPerPage)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void printBlockAsString(const uint8_t *data, size_t length) {
+  char text[kBlockSize + 1];
+  size_t textLength = 0;
+
+  for (; textLength < length && textLength < kBlockSize; ++textLength) {
+    char c = static_cast<char>(data[textLength]);
+    if (c == '\0') {
+      break;
+    }
+
+    if (isprint(static_cast<unsigned char>(c)) || c == '\r' || c == '\n') {
+      text[textLength] = c;
+    } else {
+      text[textLength] = '?';
+    }
+  }
+  text[textLength] = '\0';
+
+  if (textLength == 0) {
+    Serial.println(F("First NTAG213 data block is empty"));
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+    Serial1.println();
+#endif
+    return;
+  }
+
+  Serial.print(F("First NTAG213 data block: "));
+  Serial.println(text);
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+  Serial1.println(text);
+#endif
+}
+
+bool isSameUid(const uint8_t *lhs, const uint8_t *rhs, uint8_t length) {
+  return lhs && rhs && (memcmp(lhs, rhs, length) == 0);
+}
+}  // namespace
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) {
+    delay(10);
+  }
+
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+  Serial1.begin(115200);
+#endif
+
+#if defined(ARDUINO_ARCH_ESP32)
+  pn532Serial.begin(PN532_HSU_BAUDRATE, SERIAL_8N1, PN532_HSU_RX_PIN,
+                    PN532_HSU_TX_PIN);
+#else
+  pn532Serial.begin(PN532_HSU_BAUDRATE);
+#endif
+
+  nfc.begin();
+
+  uint32_t versiondata = nfc.getFirmwareVersion();
+  if (!versiondata) {
+    Serial.println(F("Didn't find PN53x board"));
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+    Serial1.println(F("PN532 not found"));
+#endif
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  Serial.print(F("Found chip PN5"));
+  Serial.println((versiondata >> 24) & 0xFF, HEX);
+  Serial.print(F("Firmware ver. "));
+  Serial.print((versiondata >> 16) & 0xFF, DEC);
+  Serial.print('.');
+  Serial.println((versiondata >> 8) & 0xFF, DEC);
+
+  nfc.SAMConfig();
+  nfc.setPassiveActivationRetries(0xFF);
+
+  Serial.println(F("Waiting for an ISO14443A Card ..."));
+}
+
+void loop() {
+  static uint8_t lastUid[kUidBufferSize];
+  static uint8_t lastUidLength = 0;
+  static bool tagPresent = false;
+
+  uint8_t uid[kUidBufferSize];
+  uint8_t uidLength = 0;
+
+  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+    bool newTagDetected = !tagPresent || (uidLength != lastUidLength) ||
+                          !isSameUid(uid, lastUid, uidLength);
+
+    if (newTagDetected) {
+      tagPresent = true;
+      lastUidLength = uidLength;
+      memcpy(lastUid, uid, uidLength);
+
+      Serial.print(F("Tag detected. UID length: "));
+      Serial.println(uidLength);
+      Serial.print(F("UID:"));
+      nfc.PrintHex(uid, uidLength);
+
+      if (uidLength == 7) {
+        uint8_t block[kBlockSize];
+        if (readFirstDataBlock(block, sizeof(block))) {
+          Serial.println(F("Read first NTAG213 data block"));
+          printBlockAsString(block, sizeof(block));
+        } else {
+          Serial.println(F("Failed to read first NTAG213 data block"));
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+          Serial1.println(F("NTAG213 read error"));
+#endif
+        }
+      } else {
+        Serial.println(F("Tag is not an NTAG213 (expected 7-byte UID)"));
+#if defined(ARDUINO_ARCH_ESP32) || defined(HAVE_HWSERIAL1)
+        Serial1.println(F("Unsupported tag type"));
+#endif
+      }
+    }
+  } else if (tagPresent) {
+    tagPresent = false;
+    lastUidLength = 0;
+    Serial.println(F("Tag removed"));
+  }
+
+  delay(250);
+}
